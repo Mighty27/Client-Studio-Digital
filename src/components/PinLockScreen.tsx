@@ -32,28 +32,24 @@ export function PinLockScreen({ session, onUnlockSuccess }: PinLockScreenProps) 
   };
 
   return (
-    <main className="container py-5 d-flex align-items-center justify-content-center" style={{ minHeight: 'calc(100vh - 70px)' }}>
-      <div className="studio-card p-4 p-md-5 w-100" style={{ maxWidth: '440px' }}>
+    <main
+      className="container py-5 d-flex align-items-center justify-content-center"
+      style={{ minHeight: '100vh' }}
+    >
+      <div
+        className="studio-card-elevated p-4 p-md-5 w-100"
+        style={{ maxWidth: '440px' }}
+      >
         <div className="text-center mb-4">
-          <div
-            className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
-            style={{
-              width: '54px',
-              height: '54px',
-              backgroundColor: 'rgba(59, 130, 246, 0.14)',
-              border: '1px solid rgba(59, 130, 246, 0.35)',
-              color: '#3b82f6',
-            }}
-          >
-            <i className="bi bi-shield-lock fs-4" aria-hidden="true" />
+          <div className="icon-badge icon-badge-lg icon-badge-round icon-badge-primary mx-auto mb-3">
+            <i className="bi bi-shield-lock" aria-hidden="true" />
           </div>
 
           <h1 className="font-editorial fs-2 fw-semibold mb-1 text-light">
             {session.client_name}
           </h1>
           <p className="small text-secondary mb-0">
-            Kuota {session.max_quota} foto{' '}
-            <span aria-hidden="true">·</span> Aktif s/d{' '}
+            Kuota {session.max_quota} foto <span aria-hidden="true">·</span> Aktif s/d{' '}
             {formatDisplayDate(session.expires_at)}
           </p>
         </div>

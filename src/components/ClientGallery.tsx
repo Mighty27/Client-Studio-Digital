@@ -14,6 +14,7 @@ interface ClientGalleryProps {
   selections: PhotoSelection[];
   onTogglePhoto: (photo: DrivePhoto) => Promise<void>;
   onSubmitSelections: () => Promise<void>;
+  onExitPreview?: () => void;
 }
 
 interface PhotoCardProps {
@@ -145,6 +146,7 @@ export function ClientGallery({
   selections,
   onTogglePhoto,
   onSubmitSelections,
+  onExitPreview,
 }: ClientGalleryProps) {
   const [photos, setPhotos] = useState<DrivePhoto[]>([]);
   const [driveMode, setDriveMode] = useState<'google_drive' | 'simulation'>('simulation');
@@ -222,9 +224,8 @@ export function ClientGallery({
 
   return (
     <>
-      {/* Sticky Quota & Action Header Bar (compact for mobile <= 15% viewport height) */}
       <section
-        className="client-sticky-bar py-2 py-md-2.5"
+        className="client-sticky-bar studio-topbar-accent py-2 py-md-2.5"
         aria-label="Status Seleksi Kuota Paket"
       >
         <div className="container-xl">
@@ -232,6 +233,9 @@ export function ClientGallery({
             <div className="d-flex align-items-center justify-content-between gap-2 min-w-0">
               <div className="min-w-0">
                 <div className="d-flex align-items-center gap-2">
+                  <span className="icon-badge icon-badge-sm icon-badge-primary d-none d-sm-inline-flex">
+                    <i className="bi bi-camera2" aria-hidden="true" />
+                  </span>
                   <h1 className="font-editorial fs-5 fs-md-4 fw-semibold mb-0 text-light text-truncate">
                     {session.client_name}
                   </h1>
@@ -240,7 +244,7 @@ export function ClientGallery({
                     {formatDisplayDate(session.expires_at)}
                   </span>
                 </div>
-                <div className="d-flex align-items-center gap-2 mt-0.5">
+                <div className="d-flex align-items-center gap-2 mt-1">
                   <span
                     className={`font-mono-tabular small fw-semibold text-nowrap ${
                       quotaReached ? 'text-success' : 'text-primary'
@@ -259,12 +263,10 @@ export function ClientGallery({
                     aria-label="Progres kuota foto terpilih"
                   >
                     <div
-                      style={{
-                        width: `${progressPercent}%`,
-                        height: '100%',
-                        backgroundColor: quotaReached ? '#22c55e' : '#3b82f6',
-                        transition: 'width 200ms ease, background-color 200ms ease',
-                      }}
+                      className={`studio-progress-fill ${
+                        quotaReached ? 'is-complete' : ''
+                      }`}
+                      style={{ width: `${progressPercent}%` }}
                     />
                   </div>
                 </div>
@@ -324,13 +326,23 @@ export function ClientGallery({
                   <span className="d-inline d-sm-none">Kirim Pilihan</span>
                 </button>
               )}
+
+              {onExitPreview && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-outline-secondary text-nowrap"
+                  onClick={onExitPreview}
+                >
+                  <i className="bi bi-arrow-left me-1" aria-hidden="true" />
+                  Admin
+                </button>
+              )}
             </div>
           </div>
         </div>
       </section>
 
       <main className="container-xl py-4">
-        {/* Informative Banners */}
         {isSubmitted && (
           <div
             className="alert alert-success d-flex align-items-center gap-2 mb-3 py-2.5"
@@ -361,13 +373,11 @@ export function ClientGallery({
         )}
 
         {(driveMode === 'simulation' || driveWarning) && (
-          <div className="d-flex align-items-center justify-content-between gap-2 small text-secondary mb-3 px-1">
-            <span>
-              <i className="bi bi-folder2-open me-1.5" aria-hidden="true" />
-              {driveWarning
-                ? driveWarning
-                : 'Mode Simulasi Aktif: Menampilkan 12 foto contoh studio (API Key Google Drive belum diisi).'}
-            </span>
+          <div className="soft-panel small text-secondary mb-3 py-2 px-3">
+            <i className="bi bi-folder2-open me-1.5" aria-hidden="true" />
+            {driveWarning
+              ? driveWarning
+              : 'Mode Simulasi Aktif: Menampilkan 12 foto contoh studio (API Key Google Drive belum diisi).'}
           </div>
         )}
 
@@ -376,10 +386,7 @@ export function ClientGallery({
             {Array.from({ length: 8 }).map((_, idx) => (
               <div key={idx} className="col">
                 <div className="proof-card">
-                  <div
-                    className="proof-card-media placeholder-glow"
-                    aria-hidden="true"
-                  >
+                  <div className="proof-card-media placeholder-glow" aria-hidden="true">
                     <span className="placeholder w-100 h-100 bg-secondary opacity-25" />
                   </div>
                   <div className="p-2.5 d-flex justify-content-between">
@@ -391,7 +398,7 @@ export function ClientGallery({
             ))}
           </div>
         ) : displayedPhotos.length === 0 ? (
-          <div className="studio-card p-5 text-center my-3">
+          <div className="soft-panel p-5 text-center my-3">
             <i className="bi bi-images fs-1 text-secondary mb-2 d-block" aria-hidden="true" />
             <h2 className="h6 text-light mb-1">
               {filterMode === 'selected'

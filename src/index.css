@@ -1,31 +1,59 @@
 @import "tailwindcss";
 
 :root {
-  --studio-bg: #0f1115;
-  --studio-surface: #181b21;
-  --studio-surface-elevated: #1e222a;
-  --studio-border: #2a2f3a;
+  /* Palette Studio Graphite */
+  --studio-bg: #0d0f13;
+  --studio-surface: #151820;
+  --studio-surface-elevated: #1b1f29;
+  --studio-surface-sunken: #101218;
+  --studio-border: #252a36;
+  --studio-border-strong: #343b4c;
+
+  /* Teks */
   --studio-text: #f3f4f6;
   --studio-text-muted: #9ca3af;
-  --studio-blue: #3b82f6;
-  --studio-blue-hover: #2563eb;
-  --studio-green: #22c55e;
+
+  /* Semantik */
+  --studio-blue: #4f7fff;
+  --studio-blue-hover: #3b6cf0;
+  --studio-green: #2dd48a;
+  --studio-green-dark: #16a34a;
   --studio-amber: #f59e0b;
   --studio-danger: #ef4444;
-  --bs-body-bg: #0f1115;
+
+  /* Skala Radius Terpusat */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.85rem;
+  --radius-lg: 1.1rem;
+
+  /* Skala Shadow Terpusat */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.36);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.52);
+
+  /* Bootstrap Dark Tokens */
+  --bs-body-bg: #0d0f13;
   --bs-body-color: #f3f4f6;
-  --bs-border-color: #2a2f3a;
-  --bs-card-bg: #181b21;
-  --bs-card-border-color: #2a2f3a;
-  --bs-primary: #3b82f6;
-  --bs-primary-rgb: 59, 130, 246;
-  --bs-success: #22c55e;
-  --bs-success-rgb: 34, 197, 94;
+  --bs-border-color: #252a36;
+  --bs-card-bg: #151820;
+  --bs-card-border-color: #252a36;
+  --bs-primary: #4f7fff;
+  --bs-primary-rgb: 79, 127, 255;
+  --bs-success: #2dd48a;
+  --bs-success-rgb: 45, 212, 138;
+  --bs-warning: #f59e0b;
+  --bs-warning-rgb: 245, 158, 11;
+  --bs-danger: #ef4444;
+  --bs-danger-rgb: 239, 68, 68;
 }
 
 html,
 body.studio-body {
   background-color: var(--studio-bg);
+  background-image:
+    radial-gradient(circle at 92% 4%, rgba(79, 127, 255, 0.12) 0%, transparent 42%),
+    radial-gradient(circle at 8% 96%, rgba(45, 212, 138, 0.09) 0%, transparent 42%);
+  background-attachment: fixed;
   color: var(--studio-text);
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -47,17 +75,218 @@ body.studio-body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Studio Surface & Border Utilities */
-.studio-navbar {
-  background-color: rgba(15, 17, 21, 0.94);
+/* ==========================================================================
+   Komponen Design System Reusable
+   ========================================================================== */
+
+/* Card Dasar & Elevated */
+.studio-card {
+  background-color: var(--studio-surface);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.studio-card-elevated {
+  background-color: var(--studio-surface-elevated);
+  border: 1px solid var(--studio-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Soft Panel untuk notice / empty state / box info */
+.soft-panel {
+  background-color: var(--studio-surface-sunken);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+}
+
+/* Mono Box untuk kode / link read-only */
+.mono-box {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8125rem;
+  background-color: var(--studio-surface-sunken);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--radius-sm);
+  color: var(--studio-text);
+  padding: 0.5rem 0.75rem;
+}
+
+/* Icon Badge (sm / md / lg + primary / success / warning / danger / muted) */
+.icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  border: 1px solid transparent;
+}
+
+.icon-badge-round {
+  border-radius: 999px;
+}
+
+.icon-badge-sm {
+  width: 30px;
+  height: 30px;
+  font-size: 0.9rem;
+}
+
+.icon-badge-md {
+  width: 40px;
+  height: 40px;
+  font-size: 1.1rem;
+}
+
+.icon-badge-lg {
+  width: 54px;
+  height: 54px;
+  font-size: 1.4rem;
+}
+
+.icon-badge-primary {
+  background-color: rgba(79, 127, 255, 0.14);
+  border-color: rgba(79, 127, 255, 0.34);
+  color: var(--studio-blue);
+}
+
+.icon-badge-success {
+  background-color: rgba(45, 212, 138, 0.14);
+  border-color: rgba(45, 212, 138, 0.34);
+  color: var(--studio-green);
+}
+
+.icon-badge-warning {
+  background-color: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.34);
+  color: var(--studio-amber);
+}
+
+.icon-badge-danger {
+  background-color: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.34);
+  color: var(--studio-danger);
+}
+
+.icon-badge-muted {
+  background-color: rgba(156, 163, 175, 0.12);
+  border-color: var(--studio-border);
+  color: var(--studio-text-muted);
+}
+
+/* Progress Bar Kuota */
+.studio-progress {
+  height: 7px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.studio-progress-fill {
+  height: 100%;
+  background-color: var(--studio-blue);
+  border-radius: 999px;
+  transition: width 200ms ease, background-color 200ms ease;
+}
+
+.studio-progress-fill.is-complete {
+  background-color: var(--studio-green);
+}
+
+/* Segmented Control */
+.studio-segmented {
+  background-color: var(--studio-surface-sunken);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem;
+  display: inline-flex;
+  gap: 0.2rem;
+}
+
+.studio-segmented-btn {
+  border: 0;
+  background: transparent;
+  color: var(--studio-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.35rem 0.75rem;
+  border-radius: calc(var(--radius-sm) - 2px);
+  white-space: nowrap;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.studio-segmented-btn:hover {
+  color: var(--studio-text);
+}
+
+.studio-segmented-btn.active {
+  background-color: var(--studio-blue);
+  color: #ffffff;
+}
+
+/* Garis Aksen Gradient Tipis di Bawah Navbar / Topbar */
+.studio-topbar-accent {
+  position: relative;
+}
+
+.studio-topbar-accent::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--studio-blue) 0%,
+    var(--studio-green) 48%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   AppShell Sidebar & Navigasi Admin
+   ========================================================================== */
+.studio-sidebar {
+  width: 268px;
+  flex-shrink: 0;
+  background-color: rgba(16, 18, 24, 0.92);
+  border-right: 1px solid var(--studio-border);
+  min-height: 100vh;
+}
+
+.studio-mobile-topbar {
+  background-color: rgba(13, 15, 19, 0.94);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--studio-border);
 }
 
-.studio-card {
-  background-color: var(--studio-surface);
-  border: 1px solid var(--studio-border);
-  border-radius: 0.75rem;
+.studio-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-sm);
+  color: var(--studio-text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 160ms ease, color 160ms ease;
+}
+
+.studio-nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--studio-text);
+}
+
+.studio-nav-link.active {
+  background-color: rgba(79, 127, 255, 0.16);
+  color: #ffffff;
+  border: 1px solid rgba(79, 127, 255, 0.35);
 }
 
 .studio-divider {
@@ -65,21 +294,24 @@ body.studio-body {
   opacity: 1;
 }
 
-/* Bootstrap Form Overrides for Dark Studio Theme */
+/* ==========================================================================
+   Bootstrap Dark Form & Button Adjustments
+   ========================================================================== */
 .studio-body .form-control,
 .studio-body .form-select {
-  background-color: #12151b;
+  background-color: var(--studio-surface-sunken);
   border: 1px solid var(--studio-border);
+  border-radius: var(--radius-sm);
   color: var(--studio-text);
   font-size: 0.9rem;
 }
 
 .studio-body .form-control:focus,
 .studio-body .form-select:focus {
-  background-color: #12151b;
+  background-color: var(--studio-surface-sunken);
   border-color: var(--studio-blue);
   color: var(--studio-text);
-  box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.2);
+  box-shadow: 0 0 0 0.2rem rgba(79, 127, 255, 0.22);
 }
 
 .studio-body .form-control::placeholder {
@@ -91,6 +323,10 @@ body.studio-body {
   font-size: 0.85rem;
   font-weight: 500;
   margin-bottom: 0.35rem;
+}
+
+.studio-body .btn {
+  border-radius: var(--radius-sm);
 }
 
 .studio-body .btn-primary {
@@ -105,13 +341,13 @@ body.studio-body {
 }
 
 .studio-body .btn-success {
-  background-color: #16a34a;
-  border-color: #16a34a;
+  background-color: var(--studio-green-dark);
+  border-color: var(--studio-green-dark);
 }
 
 .studio-body .btn-outline-secondary {
   color: #d1d5db;
-  border-color: var(--studio-border);
+  border-color: var(--studio-border-strong);
 }
 
 .studio-body .btn-outline-secondary:hover {
@@ -120,44 +356,15 @@ body.studio-body {
   color: #ffffff;
 }
 
-/* Mode Switcher */
-.studio-segmented {
-  background-color: #12151b;
-  border: 1px solid var(--studio-border);
-  border-radius: 0.5rem;
-  padding: 0.2rem;
-  display: inline-flex;
-  gap: 0.2rem;
-}
-
-.studio-segmented-btn {
-  border: 0;
-  background: transparent;
-  color: var(--studio-text-muted);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  padding: 0.35rem 0.75rem;
-  border-radius: 0.375rem;
-  white-space: nowrap;
-  transition: background-color 160ms ease, color 160ms ease;
-}
-
-.studio-segmented-btn:hover {
-  color: var(--studio-text);
-}
-
-.studio-segmented-btn.active {
-  background-color: var(--studio-blue);
-  color: #ffffff;
-}
-
-/* Session List Item */
+/* ==========================================================================
+   Session List Row & Client Proofing Gallery
+   ========================================================================== */
 .session-row-btn {
   width: 100%;
   text-align: left;
-  background-color: #13161c;
+  background-color: var(--studio-surface-sunken);
   border: 1px solid var(--studio-border);
-  border-radius: 0.625rem;
+  border-radius: var(--radius-sm);
   padding: 0.85rem 1rem;
   color: var(--studio-text);
   transition: border-color 160ms ease, background-color 160ms ease;
@@ -165,43 +372,37 @@ body.studio-body {
 
 .session-row-btn:hover {
   background-color: var(--studio-surface-elevated);
-  border-color: #4b5563;
+  border-color: var(--studio-border-strong);
 }
 
 .session-row-btn.is-active {
-  background-color: #1a2232;
+  background-color: rgba(79, 127, 255, 0.11);
   border-color: var(--studio-blue);
 }
 
-/* Client Sticky Quota Bar (compact for mobile <= 15% viewport height) */
+/* Client Sticky Bar */
 .client-sticky-bar {
   position: sticky;
   top: 0;
   z-index: 1020;
-  background-color: rgba(15, 17, 21, 0.96);
+  background-color: rgba(13, 15, 19, 0.96);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--studio-border);
-}
-
-.studio-progress {
-  height: 6px;
-  background-color: #232834;
-  border-radius: 999px;
-  overflow: hidden;
 }
 
 /* Photo Proof Card */
 .proof-card {
   background-color: var(--studio-surface);
   border: 1.5px solid var(--studio-border);
-  border-radius: 0.625rem;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
   transition: border-color 160ms ease, opacity 180ms ease, transform 160ms ease;
 }
 
 .proof-card.is-selected {
   border-color: var(--studio-green);
-  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35);
+  box-shadow: 0 0 0 1px rgba(45, 212, 138, 0.35);
 }
 
 .proof-card.is-locked {
@@ -211,7 +412,7 @@ body.studio-body {
 .proof-card-media {
   position: relative;
   aspect-ratio: 4 / 3;
-  background-color: #12151b;
+  background-color: var(--studio-surface-sunken);
   overflow: hidden;
 }
 
@@ -233,9 +434,9 @@ body.studio-body {
   left: 0.55rem;
   width: 36px;
   height: 36px;
-  border-radius: 0.45rem;
+  border-radius: var(--radius-sm);
   border: 1px solid rgba(255, 255, 255, 0.22);
-  background-color: rgba(15, 17, 21, 0.78);
+  background-color: rgba(13, 15, 19, 0.78);
   color: #f3f4f6;
   display: inline-flex;
   align-items: center;
@@ -245,7 +446,7 @@ body.studio-body {
 }
 
 .proof-zoom-btn:hover {
-  background-color: rgba(59, 130, 246, 0.92);
+  background-color: rgba(79, 127, 255, 0.92);
   border-color: var(--studio-blue);
   color: #ffffff;
 }
@@ -256,7 +457,7 @@ body.studio-body {
   right: 0.55rem;
   width: 30px;
   height: 30px;
-  border-radius: 0.45rem;
+  border-radius: var(--radius-sm);
   background-color: var(--studio-green);
   color: #052e16;
   display: inline-flex;
@@ -272,10 +473,10 @@ body.studio-body {
   right: 0.55rem;
   width: 30px;
   height: 30px;
-  border-radius: 0.45rem;
-  background-color: rgba(15, 17, 21, 0.8);
+  border-radius: var(--radius-sm);
+  background-color: rgba(13, 15, 19, 0.8);
   border: 1px solid var(--studio-border);
-  color: #9ca3af;
+  color: var(--studio-text-muted);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -286,8 +487,8 @@ body.studio-body {
 .proof-image-fallback {
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #181b21 0%, #232834 100%);
-  color: #9ca3af;
+  background: linear-gradient(135deg, #151820 0%, #202531 100%);
+  color: var(--studio-text-muted);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -312,8 +513,85 @@ body.studio-body {
   max-height: 76vh;
   max-width: 100%;
   object-fit: contain;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-md);
   border: 1px solid var(--studio-border);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ==========================================================================
+   Kalender Jadwal Pemotretan
+   ========================================================================== */
+.studio-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.studio-calendar-weekday {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--studio-text-muted);
+  padding: 0.35rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.studio-calendar-cell {
+  min-height: 86px;
+  padding: 0.45rem;
+  background-color: var(--studio-surface-sunken);
+  border: 1px solid var(--studio-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: left;
+  color: var(--studio-text);
+  transition: border-color 160ms ease, background-color 160ms ease;
+}
+
+.studio-calendar-cell:hover {
+  border-color: var(--studio-border-strong);
+  background-color: var(--studio-surface-elevated);
+}
+
+.studio-calendar-cell.is-outside {
+  opacity: 0.42;
+}
+
+.studio-calendar-cell.is-today {
+  border-color: rgba(45, 212, 138, 0.55);
+}
+
+.studio-calendar-cell.is-selected {
+  border-color: var(--studio-blue);
+  background-color: rgba(79, 127, 255, 0.11);
+}
+
+.studio-calendar-pill {
+  font-size: 0.6875rem;
+  line-height: 1.25;
+  padding: 0.15rem 0.35rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 2px solid var(--studio-blue);
+  background-color: rgba(79, 127, 255, 0.16);
+  color: var(--studio-text);
+}
+
+.studio-calendar-pill.is-completed {
+  border-left-color: var(--studio-green);
+  background-color: rgba(45, 212, 138, 0.14);
+}
+
+.studio-calendar-pill.is-cancelled {
+  border-left-color: var(--studio-danger);
+  background-color: rgba(239, 68, 68, 0.12);
+  color: var(--studio-text-muted);
+  text-decoration: line-through;
 }
 
 /* Accessible Focus Ring */

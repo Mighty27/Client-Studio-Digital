@@ -16,24 +16,17 @@ import { ExpiredLockScreen } from './ExpiredLockScreen';
 import { PinLockScreen } from './PinLockScreen';
 
 interface ClientViewProps {
-  sessionId: string | null;
-  onBackToAdmin: () => void;
+  sessionId: string;
+  onExitPreview?: () => void;
 }
 
-export function ClientView({ sessionId, onBackToAdmin }: ClientViewProps) {
+export function ClientView({ sessionId, onExitPreview }: ClientViewProps) {
   const [session, setSession] = useState<ProofingSession | null>(null);
   const [selections, setSelections] = useState<PhotoSelection[]>([]);
   const [loading, setLoading] = useState(true);
   const [isUnlocked, setIsUnlocked] = useState(false);
 
   const loadSessionData = useCallback(async () => {
-    if (!sessionId) {
-      setSession(null);
-      setSelections([]);
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     try {
       const found = await getSessionById(sessionId);
@@ -55,7 +48,6 @@ export function ClientView({ sessionId, onBackToAdmin }: ClientViewProps) {
   }, [loadSessionData]);
 
   useEffect(() => {
-    if (!sessionId) return;
     return subscribeToSessionUpdates(sessionId, () => {
       void loadSessionData();
     });
@@ -85,7 +77,10 @@ export function ClientView({ sessionId, onBackToAdmin }: ClientViewProps) {
 
   if (loading) {
     return (
-      <main className="container py-5 text-center text-secondary">
+      <main
+        className="container py-5 d-flex flex-column align-items-center justify-content-center text-secondary"
+        style={{ minHeight: '100vh' }}
+      >
         <div className="spinner-border text-primary mb-2" role="status" />
         <p className="small mb-0">Memuat galeri sesi...</p>
       </main>
@@ -94,16 +89,27 @@ export function ClientView({ sessionId, onBackToAdmin }: ClientViewProps) {
 
   if (!session) {
     return (
-      <main className="container py-5 d-flex justify-content-center">
-        <div className="studio-card p-4 p-md-5 text-center" style={{ maxWidth: '460px' }}>
-          <i className="bi bi-folder-x fs-1 text-secondary mb-3 d-block" aria-hidden="true" />
+      <main
+        className="container py-5 d-flex align-items-center justify-content-center"
+        style={{ minHeight: '100vh' }}
+      >
+        <div className="studio-card-elevated p-4 p-md-5 text-center" style={{ maxWidth: '460px' }}>
+          <div className="icon-badge icon-badge-lg icon-badge-round icon-badge-muted mx-auto mb-3">
+            <i className="bi bi-folder-x" aria-hidden="true" />
+          </div>
           <h1 className="h5 text-light mb-2">Sesi Galeri Tidak Ditemukan</h1>
           <p className="small text-secondary mb-4">
             Link galeri yang Anda buka tidak valid atau sesi sudah dihapus oleh studio.
           </p>
-          <button type="button" className="btn btn-primary btn-sm" onClick={onBackToAdmin}>
-            Kembali ke Dashboard Admin
-          </button>
+          {onExitPreview && (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={onExitPreview}
+            >
+              Kembali ke Dashboard Admin
+            </button>
+          )}
         </div>
       </main>
     );
@@ -131,6 +137,7 @@ export function ClientView({ sessionId, onBackToAdmin }: ClientViewProps) {
       selections={selections}
       onTogglePhoto={handleTogglePhoto}
       onSubmitSelections={handleSubmitSelections}
+      onExitPreview={onExitPreview}
     />
   );
 }

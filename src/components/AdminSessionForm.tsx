@@ -9,11 +9,15 @@ import {
 
 interface AdminSessionFormProps {
   editingSession: ProofingSession | null;
+  prefillClientName?: string;
   onSave: (input: SessionInput, editingId?: string) => Promise<void>;
   onCancelEdit: () => void;
 }
 
-function createInitialFormState(session: ProofingSession | null): SessionInput {
+function createInitialFormState(
+  session: ProofingSession | null,
+  prefillClientName = ''
+): SessionInput {
   if (session) {
     return {
       client_name: session.client_name,
@@ -25,7 +29,7 @@ function createInitialFormState(session: ProofingSession | null): SessionInput {
     };
   }
   return {
-    client_name: '',
+    client_name: prefillClientName,
     drive_folder_url: '',
     max_quota: 30,
     pin_code: generateRandomPin(),
@@ -36,21 +40,22 @@ function createInitialFormState(session: ProofingSession | null): SessionInput {
 
 export function AdminSessionForm({
   editingSession,
+  prefillClientName = '',
   onSave,
   onCancelEdit,
 }: AdminSessionFormProps) {
   const [form, setForm] = useState<SessionInput>(() =>
-    createInitialFormState(editingSession)
+    createInitialFormState(editingSession, prefillClientName)
   );
   const [errors, setErrors] = useState<Partial<Record<keyof SessionInput, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    setForm(createInitialFormState(editingSession));
+    setForm(createInitialFormState(editingSession, prefillClientName));
     setErrors({});
     setSubmitError(null);
-  }, [editingSession]);
+  }, [editingSession, prefillClientName]);
 
   const parsedFolderId = extractDriveFolderId(form.drive_folder_url);
 
@@ -165,7 +170,9 @@ export function AdminSessionForm({
               type="number"
               min={1}
               max={2000}
-              className={`form-control font-mono-tabular ${errors.max_quota ? 'is-invalid' : ''}`}
+              className={`form-control font-mono-tabular ${
+                errors.max_quota ? 'is-invalid' : ''
+              }`}
               value={form.max_quota}
               onChange={(e) =>
                 setForm((prev) => ({
@@ -181,7 +188,7 @@ export function AdminSessionForm({
 
           <div className="col-sm-6">
             <label htmlFor="session-pin-code" className="form-label">
-              PIN Akses Klien (4–6 Digit)
+              PIN Akses (4–6 Digit)
             </label>
             <div className="input-group">
               <input
@@ -189,7 +196,9 @@ export function AdminSessionForm({
                 type="text"
                 inputMode="numeric"
                 maxLength={6}
-                className={`form-control font-mono-tabular ${errors.pin_code ? 'is-invalid' : ''}`}
+                className={`form-control font-mono-tabular ${
+                  errors.pin_code ? 'is-invalid' : ''
+                }`}
                 placeholder="1234"
                 value={form.pin_code}
                 onChange={(e) =>
@@ -225,7 +234,9 @@ export function AdminSessionForm({
             <input
               id="session-expires-at"
               type="date"
-              className={`form-control font-mono-tabular ${errors.expires_at ? 'is-invalid' : ''}`}
+              className={`form-control font-mono-tabular ${
+                errors.expires_at ? 'is-invalid' : ''
+              }`}
               value={form.expires_at}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, expires_at: e.target.value }))

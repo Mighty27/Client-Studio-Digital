@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { isSupabaseConfigured } from '../lib/supabaseClient';
+import { useSearchParams } from 'react-router-dom';
+import { AdminSessionForm } from '../../components/AdminSessionForm';
+import { PageHeader } from '../../components/PageHeader';
 import {
   clearPinUnlockedInSession,
   createSession,
@@ -9,26 +11,24 @@ import {
   subscribeToSessionUpdates,
   updateSession,
   updateSessionStatus,
-} from '../services/proofingRepository';
+} from '../../services/proofingRepository';
 import type {
   FilenameExportFormat,
   PhotoSelection,
   ProofingSession,
   SessionInput,
-} from '../types/proofing';
+} from '../../types/proofing';
 import {
   buildClientShareUrl,
   calculateQuotaProgress,
   formatDisplayDate,
   formatSelectionFilenames,
+  isQuotaReached,
   isSessionExpired,
-} from '../utils/proofingRules';
-import { AdminSessionForm } from './AdminSessionForm';
+} from '../../utils/proofingRules';
 
-interface AdminDashboardProps {
+interface SessionsPageProps {
   sessions: ProofingSession[];
-  selectedSessionId: string | null;
-  onSelectSession: (sessionId: string) => void;
   onRefreshSessions: () => Promise<void>;
   onOpenClientPreview: (sessionId: string) => void;
 }
@@ -50,21 +50,48 @@ function getStatusLabel(session: ProofingSession): {
   }
 }
 
-export function AdminDashboard({
+export function SessionsPage({
   sessions,
-  selectedSessionId,
-  onSelectSession,
   onRefreshSessions,
   onOpenClientPreview,
-}: AdminDashboardProps) {
+}: SessionsPageProps) {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
+    () => searchParams.get('focus') ?? sessions[0]?.id ?? null
+  );
   const [searchTerm, setSearchTerm] = useState('');
   const [editingSession, setEditingSession] = useState<ProofingSession | null>(null);
+  const [prefillClientName, setPrefillClientName] = useState('');
   const [selections, setSelections] = useState<PhotoSelection[]>([]);
   const [loadingSelections, setLoadingSelections] = useState(false);
   const [exportFormat, setExportFormat] = useState<FilenameExportFormat>('comma');
   const [copiedFilenames, setCopiedFilenames] = useState(false);
   const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Sync focus parameter or ?new=1 from Dashboard / Schedule
+  useEffect(() => {
+    const focusId = searchParams.get('focus');
+    if (focusId && sessions.some((s) => s.id === focusId)) {
+      setSelectedSessionId(focusId);
+    }
+    if (searchParams.get('new') === '1') {
+      const clientParam = searchParams.get('client');
+      setEditingSession(null);
+      if (clientParam) {
+        setPrefillClientName(clientParam);
+      }
+      window.setTimeout(() => {
+        const input = document.getElementById('session-client-name');
+        input?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        input?.focus();
+      }, 60);
+      const next = new URLSearchParams(searchParams);
+      next.delete('new');
+      next.delete('client');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams, sessions]);
 
   const activeSession = useMemo(
     () =>
@@ -116,11 +143,12 @@ export function AdminDashboard({
       const updated = await updateSession(editingId, input);
       setEditingSession(null);
       await onRefreshSessions();
-      onSelectSession(updated.id);
+      setSelectedSessionId(updated.id);
     } else {
       const created = await createSession(input);
+      setPrefillClientName('');
       await onRefreshSessions();
-      onSelectSession(created.id);
+      setSelectedSessionId(created.id);
     }
   };
 
@@ -129,7 +157,7 @@ export function AdminDashboard({
     try {
       await navigator.clipboard.writeText(shareUrl);
     } catch {
-      // Fallback ignored if clipboard permissions are restricted
+      // Clipboard fallback ignored
     }
     setCopiedLinkId(sessionId);
     window.setTimeout(() => setCopiedLinkId(null), 2000);
@@ -140,7 +168,7 @@ export function AdminDashboard({
     try {
       await navigator.clipboard.writeText(formattedFilenames);
     } catch {
-      // Fallback via textarea selection
+      // Clipboard fallback ignored
     }
     setCopiedFilenames(true);
     window.setTimeout(() => setCopiedFilenames(false), 2000);
@@ -169,49 +197,39 @@ export function AdminDashboard({
   const quotaPercent = activeSession
     ? calculateQuotaProgress(selections.length, activeSession.max_quota)
     : 0;
+  const quotaDone = activeSession
+    ? isQuotaReached(selections.length, activeSession.max_quota)
+    : false;
 
   return (
-    <main className="container-xl py-4">
-      <div className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
-        <div>
-          <h1 className="h4 fw-semibold text-light mb-1">
-            Dashboard Studio & Manajemen Proofing
-          </h1>
-          <p className="small text-secondary mb-0">
-            Kelola tautan Google Drive klien, PIN keamanan, masa aktif galeri, dan
-            salin nama file terpilih.{' '}
-            <span aria-hidden="true">·</span>{' '}
-            <span>
-              Penyimpanan:{' '}
-              {isSupabaseConfigured
-                ? 'Supabase Terhubung'
-                : 'Mode Lokal (localStorage Fallback)'}
-            </span>
-          </p>
-        </div>
-
-        <button
-          type="button"
-          className="btn btn-primary btn-sm text-nowrap"
-          onClick={() => {
-            setEditingSession(null);
-            const nameInput = document.getElementById('session-client-name');
-            nameInput?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            nameInput?.focus();
-          }}
-        >
-          <i className="bi bi-plus-lg me-1.5" aria-hidden="true" />
-          Sesi Baru
-        </button>
-      </div>
+    <div>
+      <PageHeader
+        title="Sesi Klien"
+        subtitle="Kelola daftar sesi galeri Google Drive, PIN akses, kuota paket, dan salin nama file terpilih."
+        actions={
+          <button
+            type="button"
+            className="btn btn-sm btn-primary text-nowrap"
+            onClick={() => {
+              setEditingSession(null);
+              const input = document.getElementById('session-client-name');
+              input?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              input?.focus();
+            }}
+          >
+            <i className="bi bi-plus-lg me-1.5" aria-hidden="true" />
+            Sesi Baru
+          </button>
+        }
+      />
 
       <div className="row g-4 align-items-start">
-        {/* Left Column: Session List + Create/Edit Form */}
+        {/* Left Column: Search + Session List + Create/Edit Form */}
         <div className="col-12 col-lg-5 d-flex flex-column gap-4">
           <section className="studio-card p-3 p-md-4" aria-labelledby="sessions-list-title">
             <div className="d-flex align-items-center justify-content-between gap-2 mb-3">
               <h2 id="sessions-list-title" className="h6 fw-semibold mb-0 text-light">
-                Daftar Sesi Klien ({sessions.length})
+                Daftar Sesi ({sessions.length})
               </h2>
             </div>
 
@@ -235,7 +253,7 @@ export function AdminDashboard({
             </div>
 
             {filteredSessions.length === 0 ? (
-              <div className="text-center py-4 small text-secondary">
+              <div className="soft-panel text-center py-4 small text-secondary">
                 {sessions.length === 0
                   ? 'Belum ada sesi klien. Buat sesi pertama menggunakan form di bawah.'
                   : 'Tidak ada sesi yang cocok dengan pencarian Anda.'}
@@ -255,11 +273,13 @@ export function AdminDashboard({
                         <button
                           type="button"
                           className="btn btn-link p-0 text-start text-decoration-none text-light fw-semibold flex-grow-1"
-                          onClick={() => onSelectSession(item.id)}
+                          onClick={() => setSelectedSessionId(item.id)}
                         >
                           {item.client_name}
                         </button>
-                        <span className={`small fw-medium text-nowrap ${statusInfo.className}`}>
+                        <span
+                          className={`small fw-medium text-nowrap ${statusInfo.className}`}
+                        >
                           {statusInfo.text}
                         </span>
                       </div>
@@ -282,18 +302,20 @@ export function AdminDashboard({
                         >
                           <i
                             className={`bi ${
-                              copiedLinkId === item.id ? 'bi-check2 text-success' : 'bi-link-45deg'
+                              copiedLinkId === item.id
+                                ? 'bi-check2 text-success'
+                                : 'bi-link-45deg'
                             } me-1`}
                             aria-hidden="true"
                           />
-                          {copiedLinkId === item.id ? 'Link Disalin' : 'Salin Link'}
+                          {copiedLinkId === item.id ? 'Tersalin' : 'Salin Link'}
                         </button>
 
                         <button
                           type="button"
                           className="btn btn-sm btn-outline-secondary py-1 px-2 text-nowrap"
                           onClick={() => {
-                            onSelectSession(item.id);
+                            setSelectedSessionId(item.id);
                             setEditingSession(item);
                           }}
                         >
@@ -310,7 +332,7 @@ export function AdminDashboard({
                           }}
                         >
                           <i className="bi bi-eye me-1" aria-hidden="true" />
-                          Preview Klien
+                          Preview
                         </button>
                       </div>
                     </div>
@@ -322,19 +344,22 @@ export function AdminDashboard({
 
           <AdminSessionForm
             editingSession={editingSession}
+            prefillClientName={prefillClientName}
             onSave={handleSaveSession}
             onCancelEdit={() => setEditingSession(null)}
           />
         </div>
 
-        {/* Right Column: Real-Time Monitoring & One-Click Copy Nama File */}
+        {/* Right Column: Selected Session Monitoring & Filename Copy */}
         <div className="col-12 col-lg-7">
           {!activeSession ? (
             <div className="studio-card p-5 text-center">
-              <i className="bi bi-collection fs-1 text-secondary mb-2 d-block" aria-hidden="true" />
-              <h2 className="h6 text-light">Belum Ada Sesi Terpilih</h2>
+              <div className="icon-badge icon-badge-lg icon-badge-round icon-badge-muted mx-auto mb-3">
+                <i className="bi bi-collection" aria-hidden="true" />
+              </div>
+              <h2 className="h6 text-light mb-1">Belum Ada Sesi Terpilih</h2>
               <p className="small text-secondary mb-0">
-                Buat sesi klien baru di panel kiri untuk mulai memantau pilihan foto.
+                Buat sesi klien baru di kolom kiri untuk mulai memantau pilihan foto.
               </p>
             </div>
           ) : (
@@ -346,7 +371,7 @@ export function AdminDashboard({
               <div className="d-flex flex-wrap align-items-start justify-content-between gap-3 pb-3 border-bottom border-secondary-subtle">
                 <div>
                   <div className="small text-secondary mb-1">
-                    Monitoring Real-Time <span aria-hidden="true">·</span>{' '}
+                    Monitoring Sesi <span aria-hidden="true">·</span>{' '}
                     <span className={getStatusLabel(activeSession).className}>
                       {getStatusLabel(activeSession).text}
                     </span>
@@ -389,7 +414,7 @@ export function AdminDashboard({
                       aria-hidden="true"
                     />
                     {copiedLinkId === activeSession.id
-                      ? 'Link Klien Disalin!'
+                      ? 'Link Disalin!'
                       : 'Salin Link Klien'}
                   </button>
 
@@ -434,38 +459,39 @@ export function AdminDashboard({
                 </div>
               </div>
 
-              {/* Shareable URL & Quota Bar */}
-              <div className="row g-3">
+              {/* Link Akses & Progress Bar */}
+              <div className="row g-3 align-items-center">
                 <div className="col-md-6">
                   <div className="small text-secondary mb-1">Link Akses Klien</div>
-                  <div className="font-mono-tabular small text-light bg-dark bg-opacity-50 border border-secondary-subtle rounded-2 px-2.5 py-2 text-truncate">
+                  <div className="mono-box text-truncate">
                     ?session={activeSession.id}
                   </div>
                 </div>
                 <div className="col-md-6">
-                  <div className="d-flex justify-content-between small mb-1">
+                  <div className="d-flex justify-content-between small mb-1.5">
                     <span className="text-secondary">Progres Seleksi Klien</span>
                     <span className="font-mono-tabular fw-semibold text-light">
                       {selections.length} / {activeSession.max_quota} Foto
                     </span>
                   </div>
-                  <div className="studio-progress mt-2">
+                  <div
+                    className="studio-progress"
+                    role="progressbar"
+                    aria-valuenow={quotaPercent}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label="Progres seleksi foto klien"
+                  >
                     <div
-                      style={{
-                        width: `${quotaPercent}%`,
-                        height: '100%',
-                        backgroundColor:
-                          selections.length >= activeSession.max_quota
-                            ? '#22c55e'
-                            : '#3b82f6',
-                      }}
+                      className={`studio-progress-fill ${quotaDone ? 'is-complete' : ''}`}
+                      style={{ width: `${quotaPercent}%` }}
                     />
                   </div>
                 </div>
               </div>
 
-              {/* One-Click Copy Nama File Box */}
-              <div className="p-3 rounded-3 border border-secondary-subtle bg-dark bg-opacity-25">
+              {/* Ringkasan Nama File Terpilih */}
+              <div className="soft-panel">
                 <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2.5">
                   <div>
                     <h3 className="h6 fw-semibold text-light mb-0">
@@ -558,7 +584,7 @@ export function AdminDashboard({
                     Memuat daftar foto terpilih...
                   </div>
                 ) : selections.length === 0 ? (
-                  <div className="border border-secondary-subtle rounded-3 p-4 text-center small text-secondary">
+                  <div className="soft-panel text-center small text-secondary py-4">
                     Klien belum memilih foto pada sesi ini. Bagikan link{' '}
                     <code className="text-light">?session={activeSession.id}</code> dan
                     PIN <code className="text-light">{activeSession.pin_code}</code>{' '}
@@ -604,6 +630,6 @@ export function AdminDashboard({
           )}
         </div>
       </div>
-    </main>
+    </div>
   );
 }

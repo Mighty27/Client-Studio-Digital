@@ -1,115 +1,368 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AdminDashboard } from './components/AdminDashboard';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AppShell } from './components/AppShell';
 import { ClientView } from './components/ClientView';
-import { TopNavbar } from './components/TopNavbar';
-import { listSessions } from './services/proofingRepository';
-import type { AppViewMode, ProofingSession } from './types/proofing';
+import { DashboardPage } from './pages/admin/DashboardPage';
+import { ProfileAccountPage } from './pages/admin/ProfileAccountPage';
+import { SchedulePage } from './pages/admin/SchedulePage';
+import { SessionsPage } from './pages/admin/SessionsPage';
+import { SettingsPage } from './pages/admin/SettingsPage';
+import { TaskManagementPage } from './pages/admin/TaskManagementPage';
+import { TeamAdminPage } from './pages/admin/TeamAdminPage';
+import { TeamMemberDirectoryPage } from './pages/admin/TeamMemberDirectoryPage';
+import { HiddenRegisterPage } from './pages/auth/HiddenRegisterPage';
+import { LoginPage } from './pages/auth/LoginPage';
+import {
+  clearStoredAuthUserId,
+  getStoredAuthUserId,
+  listSchedules,
+  listSessions,
+  listTasks,
+  listTeamMembers,
+  setStoredAuthUserId,
+  subscribeToWorkspaceUpdates,
+} from './services/proofingRepository';
+import type {
+  ProofingSession,
+  StudioSchedule,
+  StudioTask,
+  TeamMember,
+} from './types/proofing';
+import { canManageTeam } from './utils/proofingRules';
 
-function readUrlState(): { mode: AppViewMode; sessionId: string | null } {
+function getClientSessionParam(): string | null {
   const params = new URLSearchParams(window.location.search);
-  const sessionParam = params.get('session');
-  if (sessionParam && sessionParam.trim()) {
-    return { mode: 'client', sessionId: sessionParam.trim() };
-  }
-  return { mode: 'admin', sessionId: null };
+  const value = params.get('session');
+  return value && value.trim().length > 0 ? value.trim() : null;
 }
 
-function syncUrlState(mode: AppViewMode, sessionId: string | null): void {
-  const url = new URL(window.location.href);
-  if (mode === 'client' && sessionId) {
-    url.searchParams.set('session', sessionId);
-  } else {
-    url.searchParams.delete('session');
-  }
-  window.history.pushState({}, '', `${url.pathname}${url.search}`);
+function isPreviewModeParam(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('preview') === '1';
 }
 
 export default function App() {
-  const initial = readUrlState();
-  const [mode, setMode] = useState<AppViewMode>(initial.mode);
-  const [sessions, setSessions] = useState<ProofingSession[]>([]);
-  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(
-    initial.sessionId
+  const [clientSessionId, setClientSessionId] = useState<string | null>(() =>
+    getClientSessionParam()
   );
-  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [isPreviewMode, setIsPreviewMode] = useState<boolean>(() =>
+    isPreviewModeParam()
+  );
+  const [sessions, setSessions] = useState<ProofingSession[]>([]);
+  const [tasks, setTasks] = useState<StudioTask[]>([]);
+  const [schedules, setSchedules] = useState<StudioSchedule[]>([]);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [currentUser, setCurrentUser] = useState<TeamMember | null>(null);
+  const [loadingWorkspace, setLoadingWorkspace] = useState<boolean>(
+    () => !getClientSessionParam()
+  );
 
   const refreshSessions = useCallback(async () => {
-    const data = await listSessions();
-    setSessions(data);
-    setSelectedSessionId((prev) => {
-      if (prev && data.some((s) => s.id === prev)) {
-        return prev;
+    const items = await listSessions();
+    setSessions(items);
+  }, []);
+
+  const refreshTasks = useCallback(async () => {
+    const items = await listTasks();
+    setTasks(items);
+  }, []);
+
+  const refreshSchedules = useCallback(async () => {
+    const items = await listSchedules();
+    setSchedules(items);
+  }, []);
+
+  const refreshMembers = useCallback(async () => {
+    const items = await listTeamMembers();
+    setMembers(items);
+    const storedUserId = getStoredAuthUserId();
+    if (storedUserId) {
+      const matched = items.find((m) => m.id === storedUserId && m.is_active) ?? null;
+      if (!matched) {
+        clearStoredAuthUserId();
       }
-      return data[0]?.id ?? null;
-    });
+      setCurrentUser(matched);
+    } else {
+      setCurrentUser(null);
+    }
+  }, []);
+
+  const refreshWorkspace = useCallback(async () => {
+    const [sessionItems, taskItems, scheduleItems, memberItems] = await Promise.all([
+      listSessions(),
+      listTasks(),
+      listSchedules(),
+      listTeamMembers(),
+    ]);
+    setSessions(sessionItems);
+    setTasks(taskItems);
+    setSchedules(scheduleItems);
+    setMembers(memberItems);
+
+    const storedUserId = getStoredAuthUserId();
+    if (storedUserId) {
+      const matched =
+        memberItems.find((m) => m.id === storedUserId && m.is_active) ?? null;
+      if (!matched) {
+        clearStoredAuthUserId();
+      }
+      setCurrentUser(matched);
+    } else {
+      setCurrentUser(null);
+    }
   }, []);
 
   useEffect(() => {
-    setLoadingSessions(true);
-    void refreshSessions().finally(() => setLoadingSessions(false));
-  }, [refreshSessions]);
-
-  useEffect(() => {
     const onPopState = () => {
-      const next = readUrlState();
-      setMode(next.mode);
-      if (next.sessionId) {
-        setSelectedSessionId(next.sessionId);
-      }
+      setClientSessionId(getClientSessionParam());
+      setIsPreviewMode(isPreviewModeParam());
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  const handleSwitchMode = (nextMode: AppViewMode) => {
-    if (nextMode === 'client') {
-      const targetId = selectedSessionId ?? sessions[0]?.id ?? null;
-      if (!targetId) return;
-      setSelectedSessionId(targetId);
-      setMode('client');
-      syncUrlState('client', targetId);
-    } else {
-      setMode('admin');
-      syncUrlState('admin', null);
-      void refreshSessions();
-    }
-  };
+  useEffect(() => {
+    if (clientSessionId) return;
 
-  const handleOpenClientPreview = (sessionId: string) => {
-    setSelectedSessionId(sessionId);
-    setMode('client');
-    syncUrlState('client', sessionId);
-  };
+    let active = true;
+    const init = async () => {
+      setLoadingWorkspace(true);
+      try {
+        await refreshWorkspace();
+      } finally {
+        if (active) setLoadingWorkspace(false);
+      }
+    };
+    void init();
+
+    const unsubscribe = subscribeToWorkspaceUpdates(() => {
+      void refreshWorkspace();
+    });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [clientSessionId, refreshWorkspace]);
+
+  const handleOpenClientPreview = useCallback((sessionId: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('session', sessionId);
+    url.searchParams.set('preview', '1');
+    window.history.pushState({}, '', url.toString());
+    setClientSessionId(sessionId);
+    setIsPreviewMode(true);
+  }, []);
+
+  const handleExitPreview = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('session');
+    url.searchParams.delete('preview');
+    if (!url.pathname.startsWith('/admin')) {
+      url.pathname = '/admin/dashboard';
+    }
+    window.history.pushState({}, '', url.toString());
+    setClientSessionId(null);
+    setIsPreviewMode(false);
+  }, []);
+
+  const handleAuthSuccess = useCallback(
+    (user: TeamMember) => {
+      setStoredAuthUserId(user.id);
+      setCurrentUser(user);
+      void refreshMembers();
+    },
+    [refreshMembers]
+  );
+
+  const handleLogout = useCallback(() => {
+    clearStoredAuthUserId();
+    setCurrentUser(null);
+  }, []);
+
+  // Client access checked outside BrowserRouter via ?session=<id>
+  if (clientSessionId) {
+    return (
+      <ClientView
+        sessionId={clientSessionId}
+        onExitPreview={isPreviewMode ? handleExitPreview : undefined}
+      />
+    );
+  }
 
   return (
-    <div className="min-vh-100 d-flex flex-column">
-      <TopNavbar
-        mode={mode}
-        onSwitchMode={handleSwitchMode}
-        sessions={sessions}
-        activeSessionId={selectedSessionId}
-        onSelectPreviewSession={(id) => handleOpenClientPreview(id)}
-      />
-
-      {loadingSessions ? (
-        <main className="container py-5 text-center text-secondary">
+    <BrowserRouter>
+      {loadingWorkspace ? (
+        <main
+          className="container py-5 d-flex flex-column align-items-center justify-content-center text-secondary"
+          style={{ minHeight: '100vh' }}
+        >
           <div className="spinner-border text-primary mb-2" role="status" />
-          <p className="small mb-0">Memuat data studio...</p>
+          <p className="small mb-0">Memuat ruang kerja studio...</p>
         </main>
-      ) : mode === 'client' ? (
-        <ClientView
-          sessionId={selectedSessionId}
-          onBackToAdmin={() => handleSwitchMode('admin')}
-        />
       ) : (
-        <AdminDashboard
-          sessions={sessions}
-          selectedSessionId={selectedSessionId}
-          onSelectSession={(id) => setSelectedSessionId(id)}
-          onRefreshSessions={refreshSessions}
-          onOpenClientPreview={handleOpenClientPreview}
-        />
+        <Routes>
+          {/* Public Login Route */}
+          <Route
+            path="/login"
+            element={
+              currentUser ? (
+                <Navigate to="/admin/dashboard" replace />
+              ) : (
+                <LoginPage
+                  hasExistingAccounts={members.length > 0}
+                  onLoginSuccess={handleAuthSuccess}
+                />
+              )
+            }
+          />
+
+          {/* Hidden Registration Route (Not linked in Login or Client views) */}
+          <Route
+            path="/daftar-akun"
+            element={
+              <HiddenRegisterPage
+                hasExistingAccounts={members.length > 0}
+                onRegisterSuccess={handleAuthSuccess}
+              />
+            }
+          />
+
+          {/* Protected Studio Admin / Team Routes */}
+          <Route
+            path="/"
+            element={
+              <Navigate
+                to={currentUser ? '/admin/dashboard' : '/login'}
+                replace
+              />
+            }
+          />
+
+          <Route
+            path="/admin"
+            element={
+              currentUser ? (
+                <AppShell
+                  currentUser={currentUser}
+                  sessions={sessions}
+                  onOpenClientSession={handleOpenClientPreview}
+                  onLogout={handleLogout}
+                />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          >
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route
+              path="dashboard"
+              element={
+                <DashboardPage
+                  sessions={sessions}
+                  tasks={tasks}
+                  schedules={schedules}
+                  onOpenClientPreview={handleOpenClientPreview}
+                />
+              }
+            />
+            <Route
+              path="schedule"
+              element={
+                <SchedulePage
+                  schedules={schedules}
+                  sessions={sessions}
+                  onRefreshSchedules={refreshSchedules}
+                />
+              }
+            />
+            <Route
+              path="sessions"
+              element={
+                <SessionsPage
+                  sessions={sessions}
+                  onRefreshSessions={refreshSessions}
+                  onOpenClientPreview={handleOpenClientPreview}
+                />
+              }
+            />
+            <Route
+              path="tasks"
+              element={
+                <TaskManagementPage
+                  tasks={tasks}
+                  sessions={sessions}
+                  onRefreshTasks={refreshTasks}
+                />
+              }
+            />
+            <Route
+              path="team-manage"
+              element={
+                currentUser && canManageTeam(currentUser.role) ? (
+                  <TeamAdminPage
+                    currentUser={currentUser}
+                    members={members}
+                    onRefreshMembers={refreshMembers}
+                  />
+                ) : (
+                  <Navigate to="/admin/team-directory" replace />
+                )
+              }
+            />
+            <Route
+              path="team-directory"
+              element={
+                currentUser ? (
+                  <TeamMemberDirectoryPage
+                    currentUser={currentUser}
+                    members={members}
+                  />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="profile"
+              element={
+                currentUser ? (
+                  <ProfileAccountPage
+                    currentUser={currentUser}
+                    onProfileUpdated={(updated) => {
+                      setCurrentUser(updated);
+                      void refreshMembers();
+                    }}
+                    onLogout={handleLogout}
+                  />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="settings"
+              element={
+                currentUser && canManageTeam(currentUser.role) ? (
+                  <SettingsPage />
+                ) : (
+                  <Navigate to="/admin/dashboard" replace />
+                )
+              }
+            />
+          </Route>
+
+          <Route
+            path="*"
+            element={
+              <Navigate
+                to={currentUser ? '/admin/dashboard' : '/login'}
+                replace
+              />
+            }
+          />
+        </Routes>
       )}
-    </div>
+    </BrowserRouter>
   );
 }
