@@ -1,0 +1,6 @@
+{
+  "name": "Lumina Proof — Client Proofing Studio",
+  "description": "Sistem seleksi foto klien dan manajemen galeri digital untuk studio fotografi dengan proteksi PIN, kuota otomatis, integrasi Google Drive, dan Supabase.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
