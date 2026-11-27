@@ -31,30 +31,48 @@ CREATE TABLE IF NOT EXISTS public.selections (
 CREATE INDEX IF NOT EXISTS idx_selections_session_id ON public.selections(session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON public.sessions(created_at DESC);
 
+-- Pastikan role PostgREST Supabase (anon & authenticated) memiliki hak akses ke schema dan tabel
+GRANT USAGE ON SCHEMA public TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.sessions TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.selections TO anon, authenticated;
+
 -- Aktifkan Row Level Security (RLS)
 ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.selections ENABLE ROW LEVEL SECURITY;
 
--- Policy dasar untuk akses client proofing berbasis session ID & admin studio
+-- Policy idempoten untuk akses client proofing berbasis session ID & admin studio
 -- Catatan: Untuk keamanan studio produksi penuh, gunakan Supabase Auth untuk operasi Admin (INSERT/DELETE sessions).
+DROP POLICY IF EXISTS "Allow public read sessions" ON public.sessions;
+DROP POLICY IF EXISTS "Allow studio session mutations" ON public.sessions;
+
 CREATE POLICY "Allow public read sessions"
   ON public.sessions
   FOR SELECT
+  TO anon, authenticated
   USING (true);
 
 CREATE POLICY "Allow studio session mutations"
   ON public.sessions
   FOR ALL
+  TO anon, authenticated
   USING (true)
   WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public read selections" ON public.selections;
+DROP POLICY IF EXISTS "Allow client selection mutations" ON public.selections;
 
 CREATE POLICY "Allow public read selections"
   ON public.selections
   FOR SELECT
+  TO anon, authenticated
   USING (true);
 
 CREATE POLICY "Allow client selection mutations"
   ON public.selections
   FOR ALL
+  TO anon, authenticated
   USING (true)
   WITH CHECK (true);
+
+-- Refresh cache schema PostgREST Supabase
+NOTIFY pgrst, 'reload schema';

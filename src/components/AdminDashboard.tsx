@@ -236,7 +236,9 @@ export function AdminDashboard({
 
             {filteredSessions.length === 0 ? (
               <div className="text-center py-4 small text-secondary">
-                Tidak ada sesi yang cocok dengan pencarian Anda.
+                {sessions.length === 0
+                  ? 'Belum ada sesi klien. Buat sesi pertama menggunakan form di bawah.'
+                  : 'Tidak ada sesi yang cocok dengan pencarian Anda.'}
               </div>
             ) : (
               <div className="d-flex flex-column gap-2" role="list">

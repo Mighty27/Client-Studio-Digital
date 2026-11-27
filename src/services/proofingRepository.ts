@@ -6,12 +6,17 @@ import type {
   SessionInput,
   SessionStatus,
 } from '../types/proofing';
-import { buildMockDrivePhotos, extractDriveFolderId } from '../utils/driveParser';
-import { addDaysIsoDate } from '../utils/proofingRules';
+import { extractDriveFolderId } from '../utils/driveParser';
 
 const SESSIONS_STORAGE_KEY = 'lumina_proof_sessions_v1';
 const SELECTIONS_STORAGE_KEY = 'lumina_proof_selections_v1';
 const UNLOCK_STORAGE_PREFIX = 'lumina_proof_pin_unlocked_';
+
+const LEGACY_DEMO_SESSION_IDS = new Set([
+  'a1111111-1111-4111-8111-111111111111',
+  'b2222222-2222-4222-8222-222222222222',
+  'c3333333-3333-4333-8333-333333333333',
+]);
 
 function createUuid(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -24,89 +29,6 @@ function createUuid(): string {
   });
 }
 
-function buildSeedData(): {
-  sessions: ProofingSession[];
-  selections: PhotoSelection[];
-} {
-  const nowIso = new Date().toISOString();
-
-  const activeSessionId = 'a1111111-1111-4111-8111-111111111111';
-  const submittedSessionId = 'b2222222-2222-4222-8222-222222222222';
-  const expiredSessionId = 'c3333333-3333-4333-8333-333333333333';
-
-  const activeFolderId = '1LuminaWeddingRakaNadira2026';
-  const submittedFolderId = '1LuminaPortraitWijayaStudio2026';
-  const expiredFolderId = '1LuminaPrewedSitiArmanBromo2026';
-
-  const sessions: ProofingSession[] = [
-    {
-      id: activeSessionId,
-      client_name: 'Raka & Nadira — Akad & Resepsi',
-      drive_folder_url: `https://drive.google.com/drive/folders/${activeFolderId}?usp=sharing`,
-      drive_folder_id: activeFolderId,
-      max_quota: 5,
-      pin_code: '1234',
-      expires_at: addDaysIsoDate(14),
-      status: 'active',
-      created_at: nowIso,
-    },
-    {
-      id: submittedSessionId,
-      client_name: 'Keluarga Wijaya — Studio Potret',
-      drive_folder_url: `https://drive.google.com/drive/folders/${submittedFolderId}?usp=sharing`,
-      drive_folder_id: submittedFolderId,
-      max_quota: 4,
-      pin_code: '8899',
-      expires_at: addDaysIsoDate(7),
-      status: 'submitted',
-      created_at: nowIso,
-    },
-    {
-      id: expiredSessionId,
-      client_name: 'Siti & Arman — Prewedding Bromo',
-      drive_folder_url: `https://drive.google.com/drive/folders/${expiredFolderId}?usp=sharing`,
-      drive_folder_id: expiredFolderId,
-      max_quota: 10,
-      pin_code: '4321',
-      expires_at: addDaysIsoDate(-4),
-      status: 'active',
-      created_at: nowIso,
-    },
-  ];
-
-  const activePhotos = buildMockDrivePhotos(activeFolderId);
-  const submittedPhotos = buildMockDrivePhotos(submittedFolderId);
-
-  const selections: PhotoSelection[] = [
-    {
-      id: createUuid(),
-      session_id: activeSessionId,
-      file_id: activePhotos[0].id,
-      file_name: activePhotos[0].name,
-      thumbnail_url: activePhotos[0].thumbnailLink,
-      selected_at: nowIso,
-    },
-    {
-      id: createUuid(),
-      session_id: activeSessionId,
-      file_id: activePhotos[1].id,
-      file_name: activePhotos[1].name,
-      thumbnail_url: activePhotos[1].thumbnailLink,
-      selected_at: nowIso,
-    },
-    ...[0, 2, 4, 7].map((idx) => ({
-      id: createUuid(),
-      session_id: submittedSessionId,
-      file_id: submittedPhotos[idx].id,
-      file_name: submittedPhotos[idx].name,
-      thumbnail_url: submittedPhotos[idx].thumbnailLink,
-      selected_at: nowIso,
-    })),
-  ];
-
-  return { sessions, selections };
-}
-
 function readLocalStore(): {
   sessions: ProofingSession[];
   selections: PhotoSelection[];
@@ -116,17 +38,34 @@ function readLocalStore(): {
     const rawSelections = localStorage.getItem(SELECTIONS_STORAGE_KEY);
 
     if (!rawSessions) {
-      const seeded = buildSeedData();
-      localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(seeded.sessions));
-      localStorage.setItem(SELECTIONS_STORAGE_KEY, JSON.stringify(seeded.selections));
-      return seeded;
+      localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify([]));
+      localStorage.setItem(SELECTIONS_STORAGE_KEY, JSON.stringify([]));
+      return { sessions: [], selections: [] };
     }
 
-    const sessions = JSON.parse(rawSessions) as ProofingSession[];
-    const selections = rawSelections ? (JSON.parse(rawSelections) as PhotoSelection[]) : [];
-    return { sessions, selections };
+    const parsedSessions = JSON.parse(rawSessions) as ProofingSession[];
+    const parsedSelections = rawSelections
+      ? (JSON.parse(rawSelections) as PhotoSelection[])
+      : [];
+
+    const hasLegacyDemo = parsedSessions.some((s) =>
+      LEGACY_DEMO_SESSION_IDS.has(s.id)
+    );
+    if (hasLegacyDemo) {
+      const cleanedSessions = parsedSessions.filter(
+        (s) => !LEGACY_DEMO_SESSION_IDS.has(s.id)
+      );
+      const cleanedSelections = parsedSelections.filter(
+        (sel) => !LEGACY_DEMO_SESSION_IDS.has(sel.session_id)
+      );
+      localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(cleanedSessions));
+      localStorage.setItem(SELECTIONS_STORAGE_KEY, JSON.stringify(cleanedSelections));
+      return { sessions: cleanedSessions, selections: cleanedSelections };
+    }
+
+    return { sessions: parsedSessions, selections: parsedSelections };
   } catch {
-    return buildSeedData();
+    return { sessions: [], selections: [] };
   }
 }
 
